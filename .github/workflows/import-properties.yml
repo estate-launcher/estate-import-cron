@@ -1,0 +1,69 @@
+# Reusable property import. Called from client repos (checkout + commit = CALLER, not this repo).
+# Pin callers to a tag, e.g. @v1.
+name: Import properties
+
+on:
+  workflow_call:
+    secrets:
+      RP_API_TOKEN:
+        required: true
+      R2_ACCOUNT_ID:
+        required: true
+      R2_ACCESS_KEY_ID:
+        required: true
+      R2_SECRET_ACCESS_KEY:
+        required: true
+      R2_BUCKET:
+        required: true
+      PUBLIC_R2_BASE_URL:
+        required: true
+      PUBLIC_R2_CLIENT_ID:
+        required: true
+      NODE_AUTH_TOKEN:
+        required: true
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_STORE: r2
+      RP_API_BASE: https://realist.realitni-pes.cz/api/v3
+      RP_API_TOKEN: ${{ secrets.RP_API_TOKEN }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      PUBLIC_R2_BASE_URL: ${{ secrets.PUBLIC_R2_BASE_URL }}
+      PUBLIC_R2_CLIENT_ID: ${{ secrets.PUBLIC_R2_CLIENT_ID }}
+      NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Import properties
+        run: npm run import:properties
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "estate-import-bot"
+          git config user.email "estate-import-bot@users.noreply.github.com"
+          git add src/content/properties
+          if git diff --cached --quiet; then
+            echo "no changes"
+            exit 0
+          fi
+          git commit -m "content: scheduled property import"
+          git pull --rebase origin main
+          git push
