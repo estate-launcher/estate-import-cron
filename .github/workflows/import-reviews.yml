@@ -1,0 +1,50 @@
+# Reusable Google reviews import. Called from client repos (checkout + commit = CALLER, not this repo).
+# Pin callers to a tag, e.g. @v1. No R2 — reviews have no photos.
+name: Import reviews
+
+on:
+  workflow_call:
+    secrets:
+      RP_API_TOKEN:
+        required: true
+      NODE_AUTH_TOKEN:
+        required: true
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    env:
+      RP_API_BASE: https://realist.realitni-pes.cz/api/v3
+      RP_API_TOKEN: ${{ secrets.RP_API_TOKEN }}
+      NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Import reviews
+        run: npm run import:reviews
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "estate-import-bot"
+          git config user.email "estate-import-bot@users.noreply.github.com"
+          git add src/content/reviews
+          if git diff --cached --quiet; then
+            echo "no changes"
+            exit 0
+          fi
+          git commit -m "content: scheduled review import"
+          git pull --rebase origin main
+          git push
