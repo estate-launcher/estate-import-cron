@@ -24,7 +24,7 @@ on:
 
 jobs:
   import:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       IMAGE_STORE: r2
       RP_API_BASE: https://realist.realitni-pes.cz/api/v3
