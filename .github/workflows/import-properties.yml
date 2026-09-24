@@ -60,6 +60,12 @@ jobs:
           git config user.name "estate-import-bot"
           git config user.email "estate-import-bot@users.noreply.github.com"
           git add src/content/properties
+          # Stav importu (počítadlo zmizení z feedu) musí přežít mezi běhy —
+          # runner je jednorázový, takže se commituje spolu s obsahem.
+          # Podmínka kvůli starším klientům, kteří ještě běží na motoru bez stavu.
+          if [ -f docs/import-state.json ]; then
+            git add docs/import-state.json
+          fi
           if git diff --cached --quiet; then
             echo "no changes"
             exit 0
